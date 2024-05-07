@@ -1,3 +1,9 @@
+# aprendo R, vai su file, ingranaggio e permo su "set as working directory"
+
+# caricare il documento CSV attraverso la funzione read.table e inserendo tra virgolette il nome del file presente nella cartella"
+# sep = "" per indicare il separatore
+# header = T per indicare che la prima riga della tabella contiene i nomi delle variabili
+
 data <- read.table("CSV_PALOCAMPIONATO.csv", sep = ",", header = T)
 
 #### PULIZIA DATI ####
@@ -7,6 +13,15 @@ data_na <- subset(data, SAMPLE_1 != "NA")
 nrow(data) - nrow(data_na) # risultano 1882 i valori eliminati perchè contenenti NA
 
 #### ANALISI ####
+quota_campionata <- data_na$SAMPLE_1
+quota_idw <- data_na$field_3
+
+summary(quota_campionata)
+summary(quota_idw)
+confronto <- by(quota_idw, quota_campionata, summary)
+
+plot(confronto)
+
 
 # calcolo i principali indicatori statistici per quaanto riguarda le quote del prodotto CAMPIONATO (SEMPLE_1)
 
@@ -64,12 +79,21 @@ max_quota_IDW # coincide con la quota registrata della cima del monte Cornetto
 min_quota_IDW <- min(data_na$field_3, na.rm = TRUE)
 min_quota_IDW
 
-# creare un dataframe con i risultati per confrontarli 
+
+# calcolo della COVARIANZA e di R-quadro 
+
+covarianza<- cov(data_na$field_3, data_na$SAMPLE_1)
+print(covarianza)
+
+R <- covarianza/(SQM_quota_CAMP*SQM_quota_IDW)
+print(R)
+
+
 
 
 # calcolo la differenza tra i due prodotti di quota IDW e campionato sulla base di quello originale 
 data_na$diff <- data_na$field_3 - data_na$SAMPLE_1 # sottraggo dalla quota IDW la quota campionata 
-
+summary(data_na$diff)
 
 # identifico gli outlayers
 Q1 <- quantile(data_na$diff, 0.25, na.rm = TRUE) # identifico il primo quartile
@@ -83,9 +107,13 @@ outliers_cresc <- sort(outliers_iqr)
 outliers_cresc
 outliers <- c(outliers_iqr)
 
+
+
+
 #### ESPORTARE I DATI ####
 
 write.csv(data_na$diff, file = "diff_quota_R.csv", row.names = FALSE)
+write.csv(data_na, file = "tabella_pulita_R.csv", row.names = FALSE)
 
 #### PLOT ####
 par(mfrow = c(1,2))
@@ -107,7 +135,7 @@ library(terra)
 library(imageRy)
 library(viridis)
 library(raster)
-
+library(ggplot2)
 
 
 
@@ -175,16 +203,26 @@ plot(b8_rt)
 plot(cornetto_rgb_rt)
 
 stacksent_rt <- stack(b2_rt, b3_rt, b4_rt, b8_rt)
-stacksent
-plot(stacksent)
+stacksent_rt
+plot(stacksent_rt)
 
+nir_green_bends <- stack(b3_rt, b8_rt, b2_rt)
 # RGB
 # stacksent[[1]] = b2 = red
 # stacksent[[2]] = b3 = green
 # stacksent[[3]] = b4 = blue
 # stacksent[[4]] = b8 = nir
-
+par(mfrow=c(2,2))
 im.plotRGB(stacksent_rt, 3, 2, 1) # naturale RGB
 im.plotRGB(stacksent_rt, 4, 3, 2) # falso colore, nir on red
-nir_green <- im.plotRGB(stacksent_rt, 2, 4, 1) # nir on green 
+im.plotRGB(stacksent_rt, 2, 4, 1) # nir on green 
+im.plotRGB(stacksent_rt, 1, 2, 4) # nir on blue
+
+immagine <- im.plotRGB(stacksent_rt, 2, 4, 1) # nir on green 
+
+
+writeRaster(immagine, filename = "nir_green", format = "GTiff", overwrite = TRUE)
+
+#Errore in (function (classes, fdef, mtable)  : 
+            # non è possibile trovare un metodo ereditato per la funzione ‘writeRaster’ per la firma ‘"NULL", "character"’
 
